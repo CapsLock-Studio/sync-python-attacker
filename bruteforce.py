@@ -3,6 +3,8 @@ import urllib
 import urllib2
 import sys
 import multiprocessing
+import os
+import signal
 
 def brute(n, m, url = '', form = 'account', form1 = 'password', account = ''):
 	for i in xrange(n,m+1):
@@ -60,7 +62,7 @@ def send(url, form, form1, account, password):
 		response = urllib2.urlopen(req)
 		if response.getcode() < 400:
 			print 'success! ...... password: ' + password
-			sys.exit()
+			os.kill(signal.CTRL_C_EVENT, 1)
 			pass
 		pass
 	except Exception, e:
