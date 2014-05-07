@@ -1,6 +1,7 @@
 import itertools, urllib, urllib2, sys, multiprocessing, os, signal, enchant
 
-allow_number = False
+chunk_size = 50000
+allow_number = True
 allow_uppercase = False
 allow_dict = True
 
@@ -18,7 +19,15 @@ uk = enchant.Dict("en_UK")
 us = enchant.Dict("en_US")
 
 def brute(i, url = '', form = 'account', form1 = 'password', account = ''):
-	work(itertools.permutations(dictstring, i), url, form, form1, account)
+    jobs = []
+    t = list(itertools.permutations(dictstring, i))
+    t = chunks(t, chunk_size)
+    for s in t:
+    	p = multiprocessing.Process(target=work, args=(s,url,form,form1,account,))
+    	jobs.append(p)
+    	p.start()
+    	pass
+    pass
 
 if __name__ == '__main__':
     jobs = []
@@ -77,6 +86,9 @@ def send(url, form, form1, account, password):
 	pass
 
 def filter_dict(words):
+    if len(words) < 3:
+        return True
+        pass
     s = ''
     for x in words:
         s += x
@@ -85,3 +97,9 @@ def filter_dict(words):
             pass
         pass
     pass
+
+def chunks(l, n):
+    """ Yield successive n-sized chunks from l.
+    """
+    for i in xrange(0, len(l), n):
+        yield l[i:i+n]  
