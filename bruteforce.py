@@ -2,8 +2,8 @@ import itertools, urllib, urllib2, sys, multiprocessing, os, signal, enchant
 
 chunk_size = 50000
 allow_number = True
-allow_uppercase = True
-allow_dict = False
+allow_uppercase = False
+allow_dict = True
 
 dictstring = 'abcdefghijklmnopqrstuvwxyz_'
 
@@ -27,9 +27,8 @@ def process(temp,url,form,form1,account):
 
 def brute(i, url = '', form = 'account', form1 = 'password', account = ''):
     temp = []
-    tt = 0
     for l in itertools.permutations(dictstring, i):
-        if allow_dict and filter_dict(l):
+        if allow_dict and filter_dict(''.join(l)):
             temp.append(l)
         elif ~allow_dict:
             temp.append(l)
